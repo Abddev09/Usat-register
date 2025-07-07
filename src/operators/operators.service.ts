@@ -51,6 +51,29 @@ export class OperatorsService {
     };
   }
 
+
+ async findOperatorUsersById(id: number): Promise<{ success: boolean; message: string; data: Operator | null }> {
+  const operator = await this.operatorsRepository.findOne({
+    where: { id },
+    relations: ['users'],
+  });
+
+  if (!operator) {
+    return {
+      success: false,
+      message: `ID: ${id} bo‘lgan operator topilmadi`,
+      data: null,
+    };
+  }
+
+  return {
+    success: true,
+    message: `Operator va foydalanuvchilari olindi`,
+    data: operator,
+  };
+}
+
+
   async findOne(id: number): Promise<{ success: boolean; message: string; data?: Operator }> {
     const operator = await this.operatorsRepository.findOneBy({ id });
     if (!operator) {

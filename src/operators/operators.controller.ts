@@ -23,6 +23,12 @@ export class OperatorsController {
     return this.operatorsService.findOne(+id);
   }
 
+  @Get('users/:id')
+async getOperatorWithUsers(@Param('id') id: string) {
+  return this.operatorsService.findOperatorUsersById(+id);
+}
+
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateOperatorDto: UpdateOperatorDto) {
     return this.operatorsService.update(+id, updateOperatorDto);
