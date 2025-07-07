@@ -55,7 +55,7 @@ export class OperatorsService {
  async findOperatorUsersById(id: number): Promise<{ success: boolean; message: string; data: Operator | null }> {
   const operator = await this.operatorsRepository.findOne({
     where: { id },
-    relations: ['users'],
+    relations: ['users', 'users.referrerOperator'], // ❗ users va ularning referrerOperator larini olish
   });
 
   if (!operator) {
@@ -72,6 +72,7 @@ export class OperatorsService {
     data: operator,
   };
 }
+
 
 
   async findOne(id: number): Promise<{ success: boolean; message: string; data?: Operator }> {
