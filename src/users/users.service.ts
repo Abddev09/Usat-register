@@ -18,14 +18,8 @@ export class UsersService {
   ) {}
 
   async create(userDto: CreateUserDto): Promise<{ success: boolean; message: string; data?: User }> {
-    const existingUser = await this.userRepository.findOneBy({ phone: userDto.phone });
 
-    if (existingUser) {
-      return {
-        success: false,
-        message: 'Foydalanuvchi avval ro‘yxatdan o‘tgan',
-      };
-    }
+    
 
     const user = this.userRepository.create(userDto);
 
