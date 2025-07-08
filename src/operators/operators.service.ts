@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { Operator } from './entities/operator.entity';
 import { CreateOperatorDto } from './dto/create-operator.dto';
 import { UpdateOperatorDto } from './dto/update-operator.dto';
+import { GoogleService } from 'src/google/google.service';
 
 @Injectable()
 export class OperatorsService {
   constructor(
     @InjectRepository(Operator)
     private operatorsRepository: Repository<Operator>,
+    private readonly googleService: GoogleService,
   ) {}
  private generateSlug(name: string): string {
     return name
@@ -22,34 +24,59 @@ export class OperatorsService {
     return `https://t.me/usat_ariza_bot?start=${utmTag}`;
   }
   async create(createOperatorDto: CreateOperatorDto): Promise<{ success: boolean; message: string; data: Operator }> {
-    const { name } = createOperatorDto;
+  const { name } = createOperatorDto;
+  const slug = this.generateSlug(name);
 
-    // name dan slug yasash
-    const slug = this.generateSlug(name);
+  const operator = this.operatorsRepository.create({
+    name,
+    slug,
+    link: this.generateLink(slug),
+  });
 
-    const operator = this.operatorsRepository.create({
-      name,
-      slug,
-      link:this.generateLink(slug)
-    });
+  const savedOperator = await this.operatorsRepository.save(operator);
 
-    const savedOperator = await this.operatorsRepository.save(operator);
+  // ✅ Google Sheets da bo‘sh sahifa yaratamiz
+  await this.googleService.ensureSheetExists('All_Users');
+  await this.googleService.ensureSheetExists(name.replace(/\s+/g, '_'));
 
-    return {
-      success: true,
-      message: 'Operator successfully created',
-      data: savedOperator,
-    };
-  }
+  return {
+    success: true,
+    message: 'Operator successfully created',
+    data: savedOperator,
+  };
+}
+
 
   async findAll(): Promise<{ success: boolean; message: string; data: Operator[] }> {
-    const operators = await this.operatorsRepository.find();
-    return {
-      success: true,
-      message: `Found ${operators.length} operator(s)`,
-      data: operators,
-    };
+  const operators = await this.operatorsRepository.find({
+    relations: ['users', 'users.referrerOperator'],
+  });
+
+  // 🔥 Barcha foydalanuvchilar (All_Users uchun)
+  const allUsers = operators.flatMap((op) =>
+    op.users.map((user) => ({
+      ...user,
+      referrerOperator: user.referrerOperator,
+      utmTag: user.utmTag,
+    })),
+  );
+
+  // 1️⃣ All_Users sheetga yozamiz, referrerOperator.name bilan
+  await this.googleService.writeUsersToSheet('All_Users', allUsers, true);
+
+  // 2️⃣ Har bir operator uchun o‘ziga tegishli userlarni topib yozamiz
+  for (const operator of operators) {
+    const ownUsers = operator.users.filter((user) => user.utmTag === operator.link);
+    await this.googleService.writeUsersToSheet(operator.name.replace(/\s+/g, '_'), ownUsers);
   }
+
+  return {
+    success: true,
+    message: `Found ${operators.length} operator(s)`,
+    data: operators,
+  };
+}
+
 
 
  async findOperatorUsersById(id: number): Promise<{ success: boolean; message: string; data: Operator | null }> {

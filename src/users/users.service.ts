@@ -5,6 +5,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { Operator } from 'src/operators/entities/operator.entity';
+import { GoogleService } from 'src/google/google.service';
 
 @Injectable()
 export class UsersService {
@@ -15,40 +16,59 @@ export class UsersService {
     @InjectRepository(Operator)
     private readonly operatorRepository: Repository<Operator>,
 
+    private readonly googleService: GoogleService,
+
   ) {}
 
   async create(userDto: CreateUserDto): Promise<{ success: boolean; message: string; data?: User }> {
+  const user = this.userRepository.create(userDto);
 
-    
+  let operator: Operator | null = null;
 
-    const user = this.userRepository.create(userDto);
+  if (userDto.utmTag) {
+    operator = await this.operatorRepository.findOne({
+      where: { link: userDto.utmTag },
+    });
 
-    if (userDto.utmTag) {
-      const operator = await this.operatorRepository.findOneBy({ link: userDto.utmTag });
-
-      if (operator) {
-        user.referrerOperator = operator;
-        user.utmTag = operator.link;
-
-        operator.referalCount++;
-        await this.operatorRepository.save(operator);
-      } else {
-        return {
-          success: false,
-          message: 'Ushbu havola (utmTag) orqali operator topilmadi',
-        };
-      }
+    if (operator) {
+      user.referrerOperator = operator;
+      user.utmTag = operator.link;
+      operator.referalCount++;
+      await this.operatorRepository.save(operator);
+    } else {
+      return {
+        success: false,
+        message: 'Ushbu havola (utmTag) orqali operator topilmadi',
+      };
     }
-
-    const savedUser = await this.userRepository.save(user);
-
-console.log("sheetga saqlandi")
-    return {
-      success: true,
-      message: 'Foydalanuvchi muvaffaqiyatli ro‘yxatdan o‘tdi',
-      data: savedUser,
-    };
   }
+
+  const savedUser = await this.userRepository.save(user);
+
+  // 🔄 Google Sheets export
+  const allUsers = await this.userRepository.find({
+    relations: ['referrerOperator'],
+  });
+
+  await this.googleService.writeUsersToSheet('All_Users', allUsers, true);
+
+  if (operator) {
+    const operatorUsers = await this.userRepository.find({
+      where: { utmTag: operator.link },
+      relations: ['referrerOperator'],
+    });
+
+    const sheetName = operator.name.replace(/\s+/g, '_');
+
+    await this.googleService.writeUsersToSheet(sheetName, operatorUsers);
+  }
+
+  return {
+    success: true,
+    message: 'Foydalanuvchi muvaffaqiyatli ro‘yxatdan o‘tdi',
+    data: savedUser,
+  };
+}
 
   async findAll(): Promise<{ success: boolean; message: string; data: User[] }> {
     const users = await this.userRepository.find({

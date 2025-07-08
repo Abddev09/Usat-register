@@ -39,7 +39,7 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
-
+/src/google
 # temp directory
 .temp
 .tmp
