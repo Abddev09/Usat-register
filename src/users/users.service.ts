@@ -51,7 +51,9 @@ console.log("sheetga saqlandi")
   }
 
   async findAll(): Promise<{ success: boolean; message: string; data: User[] }> {
-    const users = await this.userRepository.find();
+    const users = await this.userRepository.find({
+      relations: ['referrerOperator'], 
+  });
     return {
       success: true,
       message: 'Foydalanuvchilar ro‘yxati olindi',
