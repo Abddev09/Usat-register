@@ -47,6 +47,7 @@ export class UsersService {
 
   // 🔄 Google Sheets export
   const allUsers = await this.userRepository.find({
+    take:1000,
     relations: ['referrerOperator'],
   });
 
@@ -72,6 +73,7 @@ export class UsersService {
 
   async findAll(): Promise<{ success: boolean; message: string; data: User[] }> {
     const users = await this.userRepository.find({
+      take:1000,
       relations: ['referrerOperator'], 
   });
     return {

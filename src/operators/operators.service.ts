@@ -49,6 +49,7 @@ export class OperatorsService {
 
   async findAll(): Promise<{ success: boolean; message: string; data: Operator[] }> {
   const operators = await this.operatorsRepository.find({
+    take:1000,
     relations: ['users', 'users.referrerOperator'],
   });
 
